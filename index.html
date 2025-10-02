@@ -83,8 +83,9 @@
       <button id="start">🎥 Enable Camera</button>
       <button id="capture" disabled hidden>📸 Capture Photo</button>
       <button id="share" disabled hidden>📤 Share Photo</button>
+      <button id="cancel" hidden>↩️ Retake Photo</button>
       <a id="download" class="link-button" hidden aria-disabled="true">💾 Download Photo</a>
-      <button id="setCounter">Ich hab's verkackt!</button>
+      <button id="setCounter">💩 Ich hab's verkackt!</button>
     </div>
   </main>
 
@@ -95,6 +96,7 @@
     const capturePreview = document.getElementById('capturePreview');
     const captureButton = document.getElementById('capture');
     const shareButton = document.getElementById('share');
+    const cancelButton = document.getElementById('cancel');
     const downloadLink = document.getElementById('download');
     const setCounterButton = document.getElementById('setCounter');
 
@@ -203,6 +205,8 @@
       }
       shareButton.disabled = true;
       shareButton.hidden = true;
+      cancelButton.hidden = true;
+      cancelButton.style.display = 'none';
       downloadLink.hidden = true;
       downloadLink.setAttribute('aria-disabled', 'true');
       capturePreview.hidden = true;
@@ -286,6 +290,9 @@
         downloadLink.hidden = false;
         downloadLink.setAttribute('aria-disabled', 'false');
 
+        cancelButton.hidden = false;
+        cancelButton.style.display = 'inline-block';
+
         let shareState = 'unavailable';
 
         if (hasNavigatorShare) {
@@ -311,10 +318,10 @@
         }
 
         status.textContent = shareState === 'available'
-          ? 'Photo ready. Share or download below.'
+          ? 'Photo ready. Share, download, or retake below.'
           : shareState === 'limited'
             ? 'Photo ready. Sharing might not work in this browser—download or try sharing below.'
-            : 'Photo ready. Share is unavailable on this device—download below.';
+            : 'Photo ready. Share is unavailable on this device—download or retake below.';
       }, 'image/jpeg', 0.95);
     }
 
@@ -369,6 +376,13 @@
         status.textContent = 'Sharing failed. You can still download the photo.';
       }
     }
+    function cancelCapture() {
+      resetCaptureState();
+      captureButton.disabled = false;
+      status.textContent = 'Camera ready. Capture a photo when you like.';
+    }
+
+    resetCaptureState();
 
     if (!navigator.mediaDevices?.getUserMedia) {
       status.textContent = 'Camera access is not supported in this browser.';
@@ -378,6 +392,7 @@
       startButton.addEventListener('click', enableCamera);
       captureButton.addEventListener('click', captureFrame);
       shareButton.addEventListener('click', shareCapture);
+      cancelButton.addEventListener('click', cancelCapture);
       setCounterButton.addEventListener('click', setProstCounterManually);
 
       if (navigator.permissions && navigator.permissions.query) {
