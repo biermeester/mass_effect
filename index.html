@@ -177,6 +177,7 @@
 </head>
 
 <body>
+  <audio id="backgroundAudio" src="san_antonio_rose.mp3" preload="auto"></audio>
   <main>
     <video id="preview" autoplay playsinline muted></video>
     <img id="capturePreview" alt="Captured photo" hidden />
@@ -203,6 +204,7 @@
     const downloadLink = document.getElementById('download');
     const setCounterButton = document.getElementById('setCounter');
     const countdownOverlay = document.getElementById('countdownOverlay');
+    const backgroundAudio = document.getElementById('backgroundAudio');
 
     let lastCaptureBlob = null;
     let lastCaptureFile = null;
@@ -214,6 +216,31 @@
     const PROST_COOKIE = 'prostCounter';
     const PHOTO_DELAY = 3; // seconds
     const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year.
+
+    function tryPlayBackgroundAudio() {
+      if (!backgroundAudio) {
+        return;
+      }
+
+      function resumeOnInteraction() {
+        document.removeEventListener('click', resumeOnInteraction);
+        document.removeEventListener('keydown', resumeOnInteraction);
+        attemptPlayback();
+      }
+
+      function attemptPlayback() {
+        const playResult = backgroundAudio.play();
+        if (playResult && typeof playResult.catch === 'function') {
+          playResult.catch(() => {
+            // Attempt to resume playback after the first user interaction.
+            document.addEventListener('click', resumeOnInteraction, { once: true });
+            document.addEventListener('keydown', resumeOnInteraction, { once: true });
+          });
+        }
+      }
+
+      attemptPlayback();
+    }
 
     function readProstCounter() {
       const cookies = document.cookie ? document.cookie.split('; ') : [];
@@ -550,6 +577,7 @@
       status.textContent = 'Camera ready. Capture a photo when you like.';
     }
 
+    tryPlayBackgroundAudio();
     resetCaptureState();
 
     if (!navigator.mediaDevices?.getUserMedia) {
