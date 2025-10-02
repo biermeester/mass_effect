@@ -83,16 +83,108 @@
       display: none;
       align-items: center;
       justify-content: center;
-      background: rgba(11, 12, 16, 0.15);
-      color: #edf5e1;
-      font-size: clamp(6rem, 18vw, 14rem);
-      font-weight: 700;
+      background: none;
+      pointer-events: none;
+      color: #f7fdfa;
+      font-size: clamp(7rem, 20vw, 16rem);
+      font-weight: 800;
       z-index: 999;
-      transition: opacity 150ms ease-in-out;
+      letter-spacing: 0.12em;
+      mix-blend-mode: screen;
+      text-shadow:
+        0 0 1.5rem rgba(69, 162, 158, 0.8),
+        0 0 3.5rem rgba(69, 162, 158, 0.6),
+        0 0 5.5rem rgba(255, 198, 109, 0.8);
+      animation: countdownGlow 1.2s ease-in-out infinite;
+    }
+
+    #countdownOverlay::before,
+    #countdownOverlay::after {
+      content: '';
+      position: absolute;
+      inset: 12%;
+      border-radius: 50%;
+      border: 0.35rem solid rgba(69, 162, 158, 0.35);
+      box-shadow: 0 0 2.5rem rgba(69, 162, 158, 0.65);
+      opacity: 0;
+      transform: scale(0.7);
+      transition: opacity 150ms ease;
+    }
+
+    #countdownOverlay::after {
+      inset: 18%;
+      border: 0.2rem dashed rgba(255, 255, 255, 0.4);
+      animation: countdownRing 1.2s linear infinite;
     }
 
     #countdownOverlay[data-visible="true"] {
       display: flex;
+    }
+
+    #countdownOverlay[data-visible="true"]::before {
+      opacity: 1;
+      transform: scale(1.05);
+    }
+
+    #countdownOverlay.flash {
+      animation: countdownImpact 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes countdownGlow {
+      0% {
+        transform: scale(0.95);
+        filter: drop-shadow(0 0 2rem rgba(69, 162, 158, 0.2));
+        opacity: 0.85;
+      }
+
+      50% {
+        transform: scale(1.05);
+        filter: drop-shadow(0 0 4.5rem rgba(255, 198, 109, 0.6));
+        opacity: 1;
+      }
+
+      100% {
+        transform: scale(0.95);
+        filter: drop-shadow(0 0 2rem rgba(69, 162, 158, 0.2));
+        opacity: 0.85;
+      }
+    }
+
+    @keyframes countdownImpact {
+      0% {
+        transform: scale(0.6) rotate(-8deg);
+        opacity: 0.1;
+      }
+
+      40% {
+        transform: scale(1.18) rotate(3deg);
+        opacity: 1;
+      }
+
+      70% {
+        transform: scale(0.92) rotate(-2deg);
+      }
+
+      100% {
+        transform: scale(1) rotate(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes countdownRing {
+      0% {
+        transform: scale(0.7) rotate(0deg);
+        opacity: 0.25;
+      }
+
+      50% {
+        opacity: 0.6;
+      }
+
+      100% {
+        transform: scale(1.1) rotate(360deg);
+        opacity: 0.1;
+      }
     }
   </style>
 </head>
@@ -249,12 +341,17 @@
         countdownOverlay.removeAttribute('data-visible');
         countdownOverlay.textContent = '';
         countdownOverlay.setAttribute('aria-hidden', 'true');
+        countdownOverlay.classList.remove('flash');
         return;
       }
 
       countdownOverlay.textContent = seconds;
       countdownOverlay.setAttribute('data-visible', 'true');
       countdownOverlay.setAttribute('aria-hidden', 'false');
+      countdownOverlay.classList.remove('flash');
+      // Trigger reflow to restart animation.
+      void countdownOverlay.offsetWidth;
+      countdownOverlay.classList.add('flash');
     }
 
     function stopCountdown() {
@@ -265,6 +362,7 @@
       countdownOverlay.removeAttribute('data-visible');
       countdownOverlay.textContent = '';
       countdownOverlay.setAttribute('aria-hidden', 'true');
+      countdownOverlay.classList.remove('flash');
     }
 
     async function captureFrame() {
