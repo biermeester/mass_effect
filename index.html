@@ -124,14 +124,14 @@
     }
 
     function writeProstCounter(value) {
-      const safeValue = Math.max(1, Math.floor(value));
+      const safeValue = Math.max(0, Math.floor(value));
       document.cookie = `${PROST_COOKIE}=${safeValue}; max-age=${COOKIE_MAX_AGE}; path=/; SameSite=Lax`;
       return safeValue;
     }
 
     let prostCounter = readProstCounter();
-    if (!prostCounter) {
-      prostCounter = writeProstCounter(1);
+    if (!Number.isFinite(prostCounter) || prostCounter === null || prostCounter < 0) {
+      prostCounter = writeProstCounter(0);
     }
 
     function bumpProstCounter() {
@@ -146,13 +146,14 @@
       }
 
       const nextValue = Number.parseInt(input.trim(), 10);
-      if (!Number.isFinite(nextValue) || nextValue < 1) {
-        window.alert('Please enter a whole number greater than or equal to 1.');
+      if (!Number.isFinite(nextValue) || nextValue < 0) {
+        window.alert('Please enter a whole number greater than or equal to 0.');
         return;
       }
 
       prostCounter = writeProstCounter(nextValue);
-      status.textContent = `Counter updated. Next capture will be Prost #${prostCounter}.`;
+      status.textContent = `Counter updated. Next capture will be Prost #${prostCounter + 1}.`;
+      resetCaptureState();
     }
 
     const hasNavigatorShare = typeof navigator.share === 'function';
@@ -254,7 +255,8 @@
       ctx.drawImage(preview, 0, 0, width, height);
       ctx.restore();
 
-      const overlayText = `Prost #${prostCounter}`;
+      const overlayNumber = prostCounter + 1;
+      const overlayText = `Prost #${overlayNumber}`;
       const fontSize = Math.round(Math.min(width, height) * 0.08);
       const margin = Math.max(fontSize * 0.3, 16);
       const textX = width / 2;
@@ -359,7 +361,7 @@
       try {
         await navigator.share(sharePayload);
         const updatedCounter = bumpProstCounter();
-        status.textContent = `Shared! Next photo will be Prost #${updatedCounter}.`;
+        status.textContent = `Shared! Next photo will be Prost #${updatedCounter + 1}.`;
       } catch (error) {
         if (error.name === 'AbortError') {
           return;
