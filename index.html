@@ -193,6 +193,7 @@
     function onPreviewReady() {
       captureButton.disabled = false;
       captureButton.hidden = false;
+      captureButton.style.display = 'inline-block';
       status.textContent = 'Camera ready. Capture a photo when you like.';
     }
 
@@ -227,6 +228,8 @@
       }
 
       captureButton.disabled = true;
+      captureButton.hidden = true;
+      captureButton.style.display = 'none';
       status.textContent = 'Capturing photo...';
 
       resetCaptureState();
@@ -237,6 +240,8 @@
       if (!width || !height) {
         status.textContent = 'Unable to capture right now. Please try again.';
         captureButton.disabled = false;
+        captureButton.hidden = false;
+        captureButton.style.display = 'inline-block';
         return;
       }
 
@@ -247,6 +252,8 @@
       if (!ctx) {
         status.textContent = 'Unable to capture right now. Please try again.';
         captureButton.disabled = false;
+        captureButton.hidden = false;
+        captureButton.style.display = 'inline-block';
         return;
       }
       ctx.save();
@@ -277,6 +284,8 @@
 
         if (!blob) {
           status.textContent = 'Capture failed. Please try again.';
+          captureButton.hidden = false;
+          captureButton.style.display = 'inline-block';
           return;
         }
 
@@ -381,6 +390,8 @@
     function cancelCapture() {
       resetCaptureState();
       captureButton.disabled = false;
+      captureButton.hidden = false;
+      captureButton.style.display = 'inline-block';
       status.textContent = 'Camera ready. Capture a photo when you like.';
     }
 
