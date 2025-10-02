@@ -71,6 +71,24 @@
       font-size: 0.95rem;
       line-height: 1.35;
     }
+
+    #countdownOverlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(11, 12, 16, 0.1);
+      color: #edf5e1;
+      font-size: clamp(4rem, 12vw, 8rem);
+      font-weight: 700;
+      z-index: 999;
+      transition: opacity 150ms ease-in-out;
+    }
+
+    #countdownOverlay[data-visible="true"] {
+      display: flex;
+    }
   </style>
 </head>
 
@@ -88,6 +106,7 @@
       <button id="setCounter">💩 Ich hab's verkackt!</button>
     </div>
   </main>
+  <div id="countdownOverlay" aria-live="assertive" aria-hidden="true"></div>
 
   <script>
     const startButton = document.getElementById('start');
@@ -99,14 +118,17 @@
     const cancelButton = document.getElementById('cancel');
     const downloadLink = document.getElementById('download');
     const setCounterButton = document.getElementById('setCounter');
+    const countdownOverlay = document.getElementById('countdownOverlay');
 
     let lastCaptureBlob = null;
     let lastCaptureFile = null;
     let lastCaptureFileName = '';
     let lastCaptureURL = null;
     const captureCanvas = document.createElement('canvas');
+    let countdownInterval = null;
 
     const PROST_COOKIE = 'prostCounter';
+    const PHOTO_DELAY = 3; // seconds
     const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year.
 
     function readProstCounter() {
@@ -214,6 +236,30 @@
       capturePreview.hidden = true;
       capturePreview.removeAttribute('src');
       preview.hidden = false;
+      stopCountdown();
+    }
+
+    function showCountdown(seconds) {
+      if (seconds <= 0) {
+        countdownOverlay.removeAttribute('data-visible');
+        countdownOverlay.textContent = '';
+        countdownOverlay.setAttribute('aria-hidden', 'true');
+        return;
+      }
+
+      countdownOverlay.textContent = seconds;
+      countdownOverlay.setAttribute('data-visible', 'true');
+      countdownOverlay.setAttribute('aria-hidden', 'false');
+    }
+
+    function stopCountdown() {
+      if (countdownInterval) {
+        window.clearInterval(countdownInterval);
+        countdownInterval = null;
+      }
+      countdownOverlay.removeAttribute('data-visible');
+      countdownOverlay.textContent = '';
+      countdownOverlay.setAttribute('aria-hidden', 'true');
     }
 
     async function captureFrame() {
@@ -233,6 +279,25 @@
       status.textContent = 'Capturing photo...';
 
       resetCaptureState();
+
+      const delaySeconds = Math.max(0, PHOTO_DELAY | 0);
+      if (delaySeconds > 0) {
+        let remaining = delaySeconds;
+        showCountdown(remaining);
+        countdownInterval = window.setInterval(() => {
+          remaining -= 1;
+          if (remaining <= 0) {
+            stopCountdown();
+            window.clearInterval(countdownInterval);
+            countdownInterval = null;
+          }
+          showCountdown(Math.max(remaining, 0));
+        }, 1000);
+
+        await new Promise((resolve) => window.setTimeout(resolve, delaySeconds * 1000));
+      }
+
+      stopCountdown();
 
       const width = preview.videoWidth;
       const height = preview.videoHeight;
