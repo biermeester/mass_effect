@@ -102,14 +102,17 @@
     let lastCaptureURL = null;
     const captureCanvas = document.createElement('canvas');
 
-    const canShareFiles = typeof navigator.share === 'function'
+    const hasNavigatorShare = typeof navigator.share === 'function';
+    const supportsShareFiles = hasNavigatorShare
       && typeof navigator.canShare === 'function'
       && typeof File === 'function';
 
-    if (!canShareFiles) {
+    if (!hasNavigatorShare) {
       shareButton.disabled = true;
-      shareButton.hidden = true;
+      shareButton.hidden = !hasNavigatorShare;
       shareButton.title = 'Sharing images requires a compatible browser.';
+    } else if (!supportsShareFiles) {
+      shareButton.title = 'Your browser may limit photo sharing; we will still try.';
     }
 
     async function enableCamera() {
@@ -147,7 +150,7 @@
         lastCaptureURL = null;
       }
       shareButton.disabled = true;
-      shareButton.hidden = true;
+      shareButton.hidden = !hasNavigatorShare;
       cancelButton.hidden = true;
       downloadLink.hidden = true;
       downloadLink.setAttribute('aria-disabled', 'true');
@@ -233,17 +236,35 @@
 
         cancelButton.hidden = false;
 
-        if (canShareFiles && navigator.canShare({ files: [lastCaptureFile] })) {
+        let shareState = 'unavailable';
+
+        if (hasNavigatorShare) {
+          let canSharePhoto = true;
+
+          if (supportsShareFiles) {
+            try {
+              canSharePhoto = navigator.canShare({ files: [lastCaptureFile] });
+            } catch (error) {
+              canSharePhoto = false;
+            }
+          }
+
           shareButton.disabled = false;
+          shareButton.hidden = false;
+          shareButton.title = canSharePhoto
+            ? 'Share via apps like Signal or WhatsApp.'
+            : 'Your browser might not support photo sharing, but you can try.';
+          shareState = canSharePhoto ? 'available' : 'limited';
         } else {
           shareButton.disabled = true;
+          shareButton.hidden = true;
         }
 
-        shareButton.hidden = shareButton.disabled;
-
-        status.textContent = shareButton.disabled
-          ? 'Photo ready. Share is unavailable on this device—download or cancel below.'
-          : 'Photo ready. Share, download, or cancel below.';
+        status.textContent = shareState === 'available'
+          ? 'Photo ready. Share, download, or cancel below.'
+          : shareState === 'limited'
+            ? 'Photo ready. Sharing might not work in this browser—download or try sharing below.'
+            : 'Photo ready. Share is unavailable on this device—download or cancel below.';
       }, 'image/jpeg', 0.95);
     }
 
@@ -253,31 +274,50 @@
         return;
       }
 
-      if (!canShareFiles || !lastCaptureFile) {
+      if (!hasNavigatorShare || !lastCaptureFile) {
         status.textContent = 'Sharing is not supported on this device. Use the download option instead.';
         shareButton.disabled = true;
         shareButton.hidden = true;
         return;
       }
 
-      if (!navigator.canShare({ files: [lastCaptureFile] })) {
-        status.textContent = 'Sharing is not supported on this device. Use the download option instead.';
-        shareButton.disabled = true;
-        shareButton.hidden = true;
-        return;
-      }
+      if (supportsShareFiles) {
+        let canSharePhoto = false;
 
-      try {
-        await navigator.share({ files: [lastCaptureFile], title: 'Front camera photo' });
-        status.textContent = 'Shared! You can capture another photo if you like.';
-      } catch (error) {
-        if (error.name !== 'AbortError') {
-          console.error('Share failed', error);
-          status.textContent = 'Sharing failed. You can still download the photo.';
+        try {
+          canSharePhoto = navigator.canShare({ files: [lastCaptureFile] });
+        } catch (error) {
+          canSharePhoto = false;
+        }
+
+        if (!canSharePhoto) {
+          status.textContent = 'This browser cannot share photos. Use the download option instead.';
+          shareButton.title = 'Download the photo, then share it manually.';
+          return;
         }
       }
-    }
 
+      const sharePayload = { files: [lastCaptureFile], title: 'Front camera photo' };
+
+      try {
+        await navigator.share(sharePayload);
+        status.textContent = 'Shared! You can capture another photo if you like.';
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          return;
+        }
+
+        console.error('Share failed', error);
+
+        if (!supportsShareFiles && error.name === 'TypeError') {
+          status.textContent = 'This browser does not support sharing photos. Use download instead.';
+          shareButton.title = 'Download the photo, then share it manually.';
+          return;
+        }
+
+        status.textContent = 'Sharing failed. You can still download the photo.';
+      }
+    }
     function cancelCapture() {
       resetCaptureState();
       captureButton.disabled = false;
