@@ -27,7 +27,8 @@
       text-align: center;
     }
 
-    video {
+    video,
+    #capturePreview {
       width: 100%;
       border-radius: 1rem;
       border: 2px solid rgba(255, 255, 255, 0.35);
@@ -35,6 +36,10 @@
       aspect-ratio: 3 / 4;
       object-fit: cover;
       transform: scaleX(-1);
+    }
+
+    #capturePreview {
+      transform: none;
     }
 
     .actions {
@@ -58,8 +63,7 @@
 
     button:disabled,
     .link-button[aria-disabled="true"] {
-      opacity: 0.6;
-      cursor: not-allowed;
+      display: none;
     }
 
     .status {
@@ -71,12 +75,14 @@
 <body>
   <main>
     <video id="preview" autoplay playsinline muted></video>
+    <img id="capturePreview" alt="Captured photo" hidden />
     <p class="status" id="status">Tap the button below to grant camera access.</p>
     <div class="actions">
-      <button id="start">Enable Camera</button>
-      <button id="capture" disabled>Capture Photo</button>
-      <button id="share" disabled>Share Photo</button>
-      <a id="download" class="link-button" hidden aria-disabled="true">Download Photo</a>
+      <button id="start">🎥 Enable Camera</button>
+      <button id="capture" disabled>📸 Capture Photo</button>
+      <button id="share" disabled hidden>📤 Share Photo</button>
+      <button id="cancel" hidden>↩️ Retake</button>
+      <a id="download" class="link-button" hidden aria-disabled="true">💾 Download Photo</a>
     </div>
   </main>
 
@@ -84,8 +90,10 @@
     const startButton = document.getElementById('start');
     const status = document.getElementById('status');
     const preview = document.getElementById('preview');
+    const capturePreview = document.getElementById('capturePreview');
     const captureButton = document.getElementById('capture');
     const shareButton = document.getElementById('share');
+    const cancelButton = document.getElementById('cancel');
     const downloadLink = document.getElementById('download');
 
     let lastCaptureBlob = null;
@@ -100,7 +108,7 @@
 
     if (!canShareFiles) {
       shareButton.disabled = true;
-      shareButton.textContent = 'Sharing Unavailable';
+      shareButton.hidden = true;
       shareButton.title = 'Sharing images requires a compatible browser.';
     }
 
@@ -117,7 +125,7 @@
         preview.srcObject = stream;
         preview.addEventListener('loadeddata', onPreviewReady, { once: true });
         status.textContent = 'Camera stream active.';
-        startButton.textContent = 'Camera Enabled';
+        startButton.textContent = '✅ Camera Enabled';
       } catch (error) {
         console.error('getUserMedia failed', error);
         status.textContent = 'Unable to access the camera. Please check browser permissions and try again.';
@@ -139,8 +147,13 @@
         lastCaptureURL = null;
       }
       shareButton.disabled = true;
+      shareButton.hidden = true;
+      cancelButton.hidden = true;
       downloadLink.hidden = true;
       downloadLink.setAttribute('aria-disabled', 'true');
+      capturePreview.hidden = true;
+      capturePreview.removeAttribute('src');
+      preview.hidden = false;
     }
 
     async function captureFrame() {
@@ -183,6 +196,21 @@
       ctx.drawImage(preview, 0, 0, width, height);
       ctx.restore();
 
+      const fontSize = Math.round(Math.min(width, height) * 0.08);
+      const margin = Math.max(fontSize * 0.3, 16);
+      const textX = width / 2;
+      const textY = height - margin;
+
+      ctx.font = `700 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = Math.max(fontSize * 0.12, 4);
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeText('Prost!', textX, textY);
+      ctx.fillText('Prost!', textX, textY);
+
       captureCanvas.toBlob((blob) => {
         captureButton.disabled = false;
 
@@ -195,10 +223,15 @@
         lastCaptureFileName = `front-camera-${Date.now()}.jpg`;
         lastCaptureFile = new File([blob], lastCaptureFileName, { type: blob.type });
         lastCaptureURL = URL.createObjectURL(blob);
+        capturePreview.src = lastCaptureURL;
+        capturePreview.hidden = false;
+        preview.hidden = true;
         downloadLink.href = lastCaptureURL;
         downloadLink.download = lastCaptureFileName;
         downloadLink.hidden = false;
         downloadLink.setAttribute('aria-disabled', 'false');
+
+        cancelButton.hidden = false;
 
         if (canShareFiles && navigator.canShare({ files: [lastCaptureFile] })) {
           shareButton.disabled = false;
@@ -206,9 +239,11 @@
           shareButton.disabled = true;
         }
 
+        shareButton.hidden = shareButton.disabled;
+
         status.textContent = shareButton.disabled
-          ? 'Photo ready. Use the download button to save it.'
-          : 'Photo ready. Share or download below.';
+          ? 'Photo ready. Share is unavailable on this device—download or cancel below.'
+          : 'Photo ready. Share, download, or cancel below.';
       }, 'image/jpeg', 0.95);
     }
 
@@ -221,12 +256,14 @@
       if (!canShareFiles || !lastCaptureFile) {
         status.textContent = 'Sharing is not supported on this device. Use the download option instead.';
         shareButton.disabled = true;
+        shareButton.hidden = true;
         return;
       }
 
       if (!navigator.canShare({ files: [lastCaptureFile] })) {
         status.textContent = 'Sharing is not supported on this device. Use the download option instead.';
         shareButton.disabled = true;
+        shareButton.hidden = true;
         return;
       }
 
@@ -241,6 +278,12 @@
       }
     }
 
+    function cancelCapture() {
+      resetCaptureState();
+      captureButton.disabled = false;
+      status.textContent = 'Camera ready. Capture a photo when you like.';
+    }
+
     if (!navigator.mediaDevices?.getUserMedia) {
       status.textContent = 'Camera access is not supported in this browser.';
       startButton.disabled = true;
@@ -249,6 +292,7 @@
       startButton.addEventListener('click', enableCamera);
       captureButton.addEventListener('click', captureFrame);
       shareButton.addEventListener('click', shareCapture);
+      cancelButton.addEventListener('click', cancelCapture);
 
       if (navigator.permissions && navigator.permissions.query) {
         navigator.permissions.query({ name: 'camera' }).then((result) => {
