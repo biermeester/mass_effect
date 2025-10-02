@@ -102,6 +102,39 @@
     let lastCaptureURL = null;
     const captureCanvas = document.createElement('canvas');
 
+    const PROST_COOKIE = 'prostCounter';
+    const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year.
+
+    function readProstCounter() {
+      const cookies = document.cookie ? document.cookie.split('; ') : [];
+      for (const entry of cookies) {
+        const [name, value] = entry.split('=');
+        if (name === PROST_COOKIE) {
+          const numeric = Number.parseInt(value, 10);
+          if (Number.isFinite(numeric) && numeric > 0) {
+            return numeric;
+          }
+        }
+      }
+      return null;
+    }
+
+    function writeProstCounter(value) {
+      const safeValue = Math.max(1, Math.floor(value));
+      document.cookie = `${PROST_COOKIE}=${safeValue}; max-age=${COOKIE_MAX_AGE}; path=/; SameSite=Lax`;
+      return safeValue;
+    }
+
+    let prostCounter = readProstCounter();
+    if (!prostCounter) {
+      prostCounter = writeProstCounter(1);
+    }
+
+    function bumpProstCounter() {
+      prostCounter = writeProstCounter(prostCounter + 1);
+      return prostCounter;
+    }
+
     const hasNavigatorShare = typeof navigator.share === 'function';
     const supportsShareFiles = hasNavigatorShare
       && typeof navigator.canShare === 'function'
@@ -199,6 +232,7 @@
       ctx.drawImage(preview, 0, 0, width, height);
       ctx.restore();
 
+      const overlayText = `Prost #${prostCounter}`;
       const fontSize = Math.round(Math.min(width, height) * 0.08);
       const margin = Math.max(fontSize * 0.3, 16);
       const textX = width / 2;
@@ -211,8 +245,8 @@
       ctx.lineWidth = Math.max(fontSize * 0.12, 4);
       ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
       ctx.fillStyle = '#ffffff';
-      ctx.strokeText('Prost!', textX, textY);
-      ctx.fillText('Prost!', textX, textY);
+      ctx.strokeText(overlayText, textX, textY);
+      ctx.fillText(overlayText, textX, textY);
 
       captureCanvas.toBlob((blob) => {
         captureButton.disabled = false;
@@ -301,7 +335,8 @@
 
       try {
         await navigator.share(sharePayload);
-        status.textContent = 'Shared! You can capture another photo if you like.';
+        const updatedCounter = bumpProstCounter();
+        status.textContent = `Shared! Next photo will be Prost #${updatedCounter}.`;
       } catch (error) {
         if (error.name === 'AbortError') {
           return;
