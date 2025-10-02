@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -72,6 +73,7 @@
     }
   </style>
 </head>
+
 <body>
   <main>
     <video id="preview" autoplay playsinline muted></video>
@@ -83,6 +85,7 @@
       <button id="share" disabled hidden>📤 Share Photo</button>
       <button id="cancel" hidden>↩️ Retake</button>
       <a id="download" class="link-button" hidden aria-disabled="true">💾 Download Photo</a>
+      <button id="setCounter">Ich hab's verkackt!</button>
     </div>
   </main>
 
@@ -95,6 +98,7 @@
     const shareButton = document.getElementById('share');
     const cancelButton = document.getElementById('cancel');
     const downloadLink = document.getElementById('download');
+    const setCounterButton = document.getElementById('setCounter');
 
     let lastCaptureBlob = null;
     let lastCaptureFile = null;
@@ -133,6 +137,22 @@
     function bumpProstCounter() {
       prostCounter = writeProstCounter(prostCounter + 1);
       return prostCounter;
+    }
+
+    function setProstCounterManually() {
+      const input = window.prompt('How many Maß did you already drink this Oktoberfest?', String(prostCounter));
+      if (input === null) {
+        return;
+      }
+
+      const nextValue = Number.parseInt(input.trim(), 10);
+      if (!Number.isFinite(nextValue) || nextValue < 1) {
+        window.alert('Please enter a whole number greater than or equal to 1.');
+        return;
+      }
+
+      prostCounter = writeProstCounter(nextValue);
+      status.textContent = `Counter updated. Next capture will be Prost #${prostCounter}.`;
     }
 
     const hasNavigatorShare = typeof navigator.share === 'function';
@@ -368,15 +388,17 @@
       captureButton.addEventListener('click', captureFrame);
       shareButton.addEventListener('click', shareCapture);
       cancelButton.addEventListener('click', cancelCapture);
+      setCounterButton.addEventListener('click', setProstCounterManually);
 
       if (navigator.permissions && navigator.permissions.query) {
         navigator.permissions.query({ name: 'camera' }).then((result) => {
           if (result.state === 'granted') {
             enableCamera();
           }
-        }).catch(() => {});
+        }).catch(() => { });
       }
     }
   </script>
 </body>
+
 </html>
